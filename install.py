@@ -95,7 +95,8 @@ def main():
         print("  - (未指定 --project-dir，跳过项目级)")
 
     print("[2/2] 部署独立技能文件")
-    write_file(os.path.join(home, ".codex", "skills", SKILL_DIR_NAME, "SKILL.md"), skill, a.dry_run)
+    for base in (".codex", ".claude"):  # Codex 与 Claude Code(含 VSCode 扩展) 各读自家 skills 目录
+        write_file(os.path.join(home, base, "skills", SKILL_DIR_NAME, "SKILL.md"), skill, a.dry_run)
 
     print("完成。下一步：")
     print(f"  1) 确认 feishu.env 已配置（本目录）")
