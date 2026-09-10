@@ -17,6 +17,7 @@
 """
 import argparse
 import os
+import shutil
 import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -65,15 +66,67 @@ def write_file(path, text, dry):
     print(f"  [OK] 写入 {path}")
 
 
+def remove_block(path, dry):
+    """移除本工程的标记块（保留文件其它内容）"""
+    if not os.path.isfile(path):
+        print(f"  [skip] 不存在: {path}")
+        return
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    if MARK_BEGIN not in text or MARK_END not in text:
+        print(f"  [skip] 无标记块: {path}")
+        return
+    pre = text.split(MARK_BEGIN)[0]
+    post = text.split(MARK_END, 1)[1]
+    new = (pre.rstrip() + "\n" + post.lstrip("\n")).strip()
+    if dry:
+        print(f"  [dry] 移除标记块: {path}")
+        return
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(new + ("\n" if new else ""))
+    print(f"  [OK] 移除标记块: {path}")
+
+
+def remove_dir(path, dry):
+    if not os.path.isdir(path):
+        print(f"  [skip] 不存在: {path}")
+        return
+    if dry:
+        print(f"  [dry] 删除目录: {path}")
+        return
+    shutil.rmtree(path)
+    print(f"  [OK] 删除技能目录: {path}")
+
+
 def main():
     ap = argparse.ArgumentParser(description="飞书通知工程安装器")
     ap.add_argument("--tool-dir", default=ROOT, help="工具所在目录（默认本仓库根）")
     ap.add_argument("--project-dir", default=None, help="额外注入项目根 AGENTS.md（如 DSH 工作区）")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--uninstall", action="store_true", help="停用：移除标记块与技能文件（工程文件保留）")
     a = ap.parse_args()
 
     tool_dir = os.path.abspath(a.tool_dir).replace("\\", "/")
     home = os.path.expanduser("~")
+
+    if a.uninstall:
+        print("== 停用（移除规则标记块与技能文件；工程目录与仓库保留）==")
+        print("[1/2] 移除规则标记块")
+        for path in [
+            os.path.join(home, ".codex", "AGENTS.md"),
+            os.path.join(home, ".github", "copilot-instructions.md"),
+            os.path.join(home, ".claude", "CLAUDE.md"),
+        ]:
+            remove_block(path, a.dry_run)
+        if a.project_dir:
+            remove_block(os.path.join(os.path.abspath(a.project_dir), "AGENTS.md"), a.dry_run)
+        print("[2/2] 移除技能目录")
+        for base in (".codex", ".claude", ".copilot"):
+            remove_dir(os.path.join(home, base, "skills", SKILL_DIR_NAME), a.dry_run)
+        if a.project_dir:
+            remove_dir(os.path.join(os.path.abspath(a.project_dir), ".github", "skills", SKILL_DIR_NAME), a.dry_run)
+        print("完成：已停用。工程文件未改动，需要时重新运行 install.py 即可恢复。")
+        return 0
     print("== 飞书通知工程 安装 ==")
     print(f"工具目录: {tool_dir}")
 
