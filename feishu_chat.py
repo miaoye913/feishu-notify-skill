@@ -79,6 +79,19 @@ def is_stop(text):
     return any(w in low for w in STOP_WORDS)
 
 
+def listener_status():
+    """根据心跳文件判断常驻监听是否在运行"""
+    hb = os.path.join(INBOX, ".listener.heartbeat")
+    if not os.path.isfile(hb):
+        return False, "未发现心跳（监听未启动过）"
+    try:
+        pid, ts = open(hb, encoding="utf-8").read().split()
+        age = time.time() - float(ts)
+    except Exception:
+        return False, "心跳文件异常"
+    return (age < 90), f"心跳 {age:.0f} 秒前，pid={pid}"
+
+
 def take_new():
     """取出未读消息（全部），并把基线推进到当前所有文件"""
     files = list_files()
@@ -125,10 +138,20 @@ def main():
     ap.add_argument("--pending", action="store_true", help="取出未读消息（不等待）")
     ap.add_argument("--wait-new", action="store_true", help="阻塞等新消息（全部取出）")
     ap.add_argument("--loop", action="store_true", help="连续多轮等待并打印")
+    ap.add_argument("--status", action="store_true", help="显示监听状态与未读数")
     ap.add_argument("--send", default=None, help="发送回复内容")
     ap.add_argument("-t", "--title", default=None, help="发送标题")
     ap.add_argument("--timeout", type=int, default=300, help="等待超时秒数")
     a = ap.parse_args()
+
+    if a.status:
+        alive, info = listener_status()
+        files, state = list_files(), load_state()
+        pend = [f for f in files if f not in state]
+        print(f"监听状态: {'运行中 OK' if alive else '未运行'}（{info}）")
+        print(f"未读消息: {len(pend)} 条" + (f"  最新: {pend[-1]}" if pend else ""))
+        print("模式提示: 常驻监听=对话模式；仅发通知=通知模式（无需监听）；--wait=单次问答")
+        return 0
 
     if a.send is not None:
         return do_send(a.send, a.title)

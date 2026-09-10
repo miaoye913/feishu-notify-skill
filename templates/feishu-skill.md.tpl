@@ -21,6 +21,18 @@ description: 通过飞书给用户发送通知（任务完成/失败/提醒）�
 - 身份获取 `{{TOOL_DIR}}/feishu_whoami.py`；配置 `feishu.env`（勿外传/勿入库）
 - 接收功能依赖 `pip install lark-oapi`
 
+## 三种模式怎么选（先判别再执行）
+
+| 用户意图 | 模式 | 做法 | 监听 |
+|---|---|---|---|
+| 「跑完通知我」 | ① 通知 | `feishu_send.py "<摘要>" --tag 通知` | 不需要 |
+| 「问我，等我答」 | ② 单次问答 | `feishu_send.py` 提问 + `feishu_listen.py --wait --timeout 300` | 一次性 |
+| 「聊会儿 / 开启对话模式」 | ③ 对话 | `feishu_listen.py --listen` + 循环 `feishu_chat.py --wait-new` | 常驻 |
+
+口诀：**单向发=通知；要等你一句=`--wait`；多轮来回=`--listen`+chat 循环**。
+状态查询：`feishu_chat.py --status`（监听是否在跑 / 未读数）。
+消息加 `--tag 通知` 或 `--tag 对话`，用户一眼分清。
+
 ## 双通道问答
 
 1. `python "{{TOOL_DIR}}/feishu_send.py" "<问题+选项>" -t "提问"`

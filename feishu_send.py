@@ -65,6 +65,7 @@ def main():
     ap.add_argument("content", help="消息内容（必填）")
     ap.add_argument("-t", "--title", default=None, help="标题（会拼在内容前）")
     ap.add_argument("--to", default=None, help="接收者 open_id（默认读 feishu.env）")
+    ap.add_argument("--tag", default=None, help="消息前缀标签（如 通知/对话），用于区分模式")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
 
@@ -79,6 +80,8 @@ def main():
         return 2
 
     text = f"{a.title}\n{a.content}" if a.title else a.content
+    if a.tag:
+        text = f"[{a.tag}] {text}"
     if a.dry_run:
         print(f"[DryRun] 将向 open_id={open_id[:10]}*** 发送: {text}")
         return 0

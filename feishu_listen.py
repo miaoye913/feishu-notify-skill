@@ -24,6 +24,17 @@ import time
 BASE = os.path.dirname(os.path.abspath(__file__))
 ENV = os.path.join(BASE, "feishu.env")
 INBOX = os.path.join(BASE, "inbox")
+HEARTBEAT = os.path.join(INBOX, ".listener.heartbeat")
+
+
+def touch_heartbeat():
+    """刷新监听心跳，供 feishu_chat.py --status 判断监听是否在运行"""
+    os.makedirs(INBOX, exist_ok=True)
+    try:
+        with open(HEARTBEAT, "w", encoding="utf-8") as f:
+            f.write(f"{os.getpid()} {time.time()}")
+    except Exception:
+        pass
 
 
 def load_env():
@@ -76,6 +87,15 @@ def main():
         print("[OK] lark-oapi 可用；运行 --wait 或 --listen 即可开始监听")
         return 0
 
+    touch_heartbeat()
+
+    def _heartbeat_loop():
+        while True:
+            time.sleep(30)
+            touch_heartbeat()
+
+    threading.Thread(target=_heartbeat_loop, daemon=True).start()
+
     def on_message(data) -> None:
         try:
             msg = data.event.message
@@ -86,6 +106,7 @@ def main():
                     text = json.loads(msg.content).get("text", "")
                 except Exception:
                     text = msg.content or ""
+            touch_heartbeat()
             fn = save_inbox(text, open_id, msg.chat_type)
             print(f"[新消息] {text}\n  已存: {fn}", flush=True)
             if a.wait:
