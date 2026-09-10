@@ -52,6 +52,25 @@ python feishu_whoami.py                   # 在飞书给机器人发条消息，
 python feishu_test.py                     # 端到端测试（含长连接回环）
 ```
 
+## 对话模式（双向多轮，直到用户喊停）
+
+与"完成通知"的单向一次性不同，对话模式是**常驻监听 + 每轮取全部新消息 + 逐条处理回发**：
+
+```bash
+python feishu_listen.py --listen                    # ① 常驻监听（后台任务）
+python feishu_chat.py --reset                       # ② 推进已读基线
+python feishu_chat.py --wait-new --timeout 300      # ③ 阻塞等新消息（连发多条全部取出）
+python feishu_chat.py --send "回复内容"              # ④ 回复
+# ⑤ 回到 ③ 继续；用户说"停"时会输出 [STOP]，据此结束并停掉 ①
+```
+
+要点与坑（实测总结）：
+- 必须用 `--listen`（常驻）；`--wait` 收到一条就退出，不适合多轮
+- 一轮内可能连发多条 → `feishu_chat.py` 保证**全部取出**（手工只取最新会静默漏消息）
+- 飞书是 WebSocket 推流，**监听挂上之前发的消息补不回来**
+- 结束条件是"用户喊停"（行为约定，监听进程不会自己退）
+- 发送频控：单用户 5 QPS
+
 ## 日常用法
 
 | 场景 | 命令 |

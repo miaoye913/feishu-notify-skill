@@ -27,6 +27,19 @@ description: 通过飞书给用户发送通知（任务完成/失败/提醒）�
 2. `python "{{TOOL_DIR}}/feishu_listen.py" --wait --timeout 30`（后台）
 3. 用户前端或飞书任一路回复 → 结束监听（飞书回复会落盘 `inbox/`）
 
+## 对话模式（用户说「开启对话模式」「我们聊会儿」「用飞书对话」时执行）
+
+双向多轮对话，直到用户明确喊停：
+
+1. 启动常驻监听（后台）：`python "{{TOOL_DIR}}/feishu_listen.py" --listen`
+2. 推进已读基线：`python "{{TOOL_DIR}}/feishu_chat.py" --reset`
+3. 通知用户已就绪：`python "{{TOOL_DIR}}/feishu_chat.py" --send "对话模式已开启，说「停」结束"`
+4. 循环：`python "{{TOOL_DIR}}/feishu_chat.py" --wait-new --timeout 300`（阻塞等新消息，连发多条会全部取出）
+   → 处理打印出的每条消息 → 用 `--send "<回复>"` 逐条回复 → 回到本步继续
+5. 结束：输出出现 `[STOP]`（用户说了停/结束/不用了等）→ 回一句收尾 → **停掉第 1 步的监听进程**
+
+注意：必须用 `--listen`（常驻）而非 `--wait`；飞书 WebSocket 推流不补历史消息；发送频控 5 QPS。
+
 ## 测试例程
 
 `python "{{TOOL_DIR}}/feishu_test.py"` → 配置/凭证/发送/长连接回环四项检查，输出 PASS/FAIL。
